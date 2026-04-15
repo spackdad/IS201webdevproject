@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Circle Chain Game</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        canvas {
+            background-color: white;
+            border: 2px solid black;
+            margin-top: 20px;
+        }
+
+        h1 {
+            margin-top: 20px;
+        }
+
+        /* Game Over Screen */
+        #gameOverScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #gameOverScreen button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Circle Chain Game</h1>
+<p>Score: <span id="score">0</span></p>
+<p>Use arrow keys to move. Avoid the red dots!</p>
+
+<canvas id="gameCanvas" width="600" height="400"></canvas>
+
+<!-- Game Over Screen -->
+<div id="gameOverScreen">
+    <h1>Game Over</h1>
+    <p id="finalScore"></p>
+    <button onclick="restartGame()">Retry</button>
+    <button onclick="goHome()">Home</button>
+</div>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let player, dx, dy, chain, dots, enemies, score, gameRunning;
+
+// Initialize game
+function init() {
+    player = { x: 300, y: 200, size: 10 };
+    dx = 0;
+    dy = 0;
+    chain = [];
+    dots = [];
+    enemies = [{ x: 100, y: 100, size: 10 }];
+    score = 0;
+    gameRunning = true;
+
+    document.getElementById("score").innerText = score;
+    document.getElementById("gameOverScreen").style.display = "none";
+
+    for (let i = 0; i < 5; i++) spawnDot();
+}
+
+// Spawn collectible dots
+function spawnDot() {
+    dots.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: 8
+    });
+}
+
+// Add new enemy every 10 seconds
+setInterval(() => {
+    if (gameRunning) {
+        enemies.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            size: 10
+        });
+    }
+}, 10000);
+
+// Controls
+document.addEventListener("keydown", (e) => {
+    if (!gameRunning) return;
+
+    if (e.key === "ArrowUp") { dx = 0; dy = -2; }
+    if (e.key === "ArrowDown") { dx = 0; dy = 2; }
+    if (e.key === "ArrowLeft") { dx = -2; dy = 0; }
+    if (e.key === "ArrowRight") { dx = 2; dy = 0; }
+});
+
+// Draw circle
+function drawCircle(x, y, size, color) {
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+}
+
+// Collision check
+function isColliding(a, b) {
+    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+    return dist < a.size + b.size;
+}
+
+// Game loop
+function update() {
+    if (!gameRunning) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Move player
+    player.x += dx;
+    player.y += dy;
+
+    // Draw player
+    drawCircle(player.x, player.y, player.size, "black");
+
+    // Draw chain
+    let prev = { ...player };
+    chain.forEach((segment) => {
+        let tempX = segment.x;
+        let tempY = segment.y;
+
+        segment.x += (prev.x - segment.x) * 0.2;
+        segment.y += (prev.y - segment.y) * 0.2;
+
+        drawCircle(segment.x, segment.y, player.size, "black");
+
+        prev = { x: tempX, y: tempY };
+    });
+
+    // Draw dots
+    dots.forEach((dot, index) => {
+        drawCircle(dot.x, dot.y, dot.size, "black");
+
+        if (isColliding(player, dot)) {
+            chain.push({ x: dot.x, y: dot.y });
+            score++;
+            document.getElementById("score").innerText = score;
+
+            dots.splice(index, 1);
+            spawnDot();
+        }
+    });
+
+    // Move & draw enemies
+    enemies.forEach((enemy) => {
+        let angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
+        enemy.x += Math.cos(angle) * 1.2;
+        enemy.y += Math.sin(angle) * 1.2;
+
+        drawCircle(enemy.x, enemy.y, enemy.size, "red");
+
+        if (isColliding(player, enemy)) {
+            endGame();
+        }
+    });
+
+    requestAnimationFrame(update);
+}
+
+// End game
+function endGame() {
+    gameRunning = false;
+    document.getElementById("finalScore").innerText = "Score: " + score;
+    document.getElementById("gameOverScreen").style.display = "flex";
+}
+
+// Restart
+function restartGame() {
+    init();
+    update();
+}
+
+// Go back home
+function goHome() {
+    window.location.href = "index.html"; 
+}
+
+// Start game
+init();
+update();
+</script>
+
+</body>
+</html>
